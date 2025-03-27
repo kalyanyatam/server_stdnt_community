@@ -24,7 +24,7 @@ app.use(cookieParser());
 // Routes
 app.use('/auth', UserRouter);
 app.use('/api/post', PostRouter);
-app.use('/api/chats', ChatRouter);
+app.use('/api/chats', ChatRouter); // Ensure API prefix is consistent
 
 // Database connection
 mongoose.connect(process.env.MONGODB_URI)
@@ -45,7 +45,7 @@ mongoose.connect(process.env.MONGODB_URI)
 
         // Socket.IO connection event
         io.on('connection', (socket) => {
-            console.log('a user connected', socket.id);
+            console.log('A user connected:', socket.id);
 
             // Join a chat room
             socket.on('joinRoom', ({ chatId }) => {
@@ -55,27 +55,32 @@ mongoose.connect(process.env.MONGODB_URI)
 
             // Handle sending messages
             socket.on('sendMessage', async ({ chatId, senderId, content }) => {
-                const chat = await Chat.findById(chatId);
-                if (chat) {
-                    const message = { sender: senderId, content };
-                    chat.messages.push(message);
-                    await chat.save();
-                    io.to(chatId).emit('message', message);
+                try {
+                    const chat = await Chat.findById(chatId);
+                    if (chat) {
+                        const message = { sender: senderId, content };
+                        chat.messages.push(message);
+                        await chat.save();
+                        io.to(chatId).emit('message', message);
+                    }
+                } catch (error) {
+                    console.error("Error sending message:", error);
                 }
             });
 
             // Disconnect event
             socket.on('disconnect', () => {
-                console.log('user disconnected', socket.id);
+                console.log('User disconnected:', socket.id);
             });
         });
 
         // Start the server with error handling
-        server.listen(process.env.PORT, () => {
-            console.log(`Server is running on port ${process.env.PORT}`);
+        const PORT = process.env.PORT || 3000;
+        server.listen(PORT, () => {
+            console.log(`Server is running on port ${PORT}`);
         }).on('error', (err) => {
             if (err.code === 'EADDRINUSE') {
-                console.error(`Port ${process.env.PORT} is already in use.`);
+                console.error(`Port ${PORT} is already in use.`);
             } else {
                 console.error('Error starting server:', err);
             }
